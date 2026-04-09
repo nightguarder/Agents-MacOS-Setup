@@ -1,0 +1,6 @@
+# Environment Context
+- You are a sandboxed agent user on macOS.
+- You have access ONLY to this Developer folder.
+- Do not attempt to access /Users/ (except for this project).
+- Use host-provided binaries in /opt/homebrew/bin.
+- Be decisive; implement logical improvements without asking for permission.
