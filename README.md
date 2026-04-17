@@ -1,154 +1,73 @@
-# 📦 Safe-Agent-Sandbox (macOS Native)
+# Agents macOS Setup (M4 Pro Isolation)
 
-A minimalist, storage-light method for running AI Coding Agents (OpenCode, Gemini CLI, etc.) on macOS without giving them access to your personal files.
+A secure architecture for running AI agents (Gemini, OpenCode, OpenClaw) on macOS with strict user isolation and sandbox enforcement. Optimized for Apple Silicon.
 
-## 🚀 Why this setup?
-* **Zero Bloat:** Uses native macOS user boundaries. No Docker, no VMs.
-* **Storage Light:** Agents share your host's binaries (Homebrew, Node, Python).
-* **Secure:** Agents are physically blocked from your `Documents`, `Photos`, and `Keychain`.
-* **Integrated:** Agents work directly on your `~/Developer` files via ACLs.
+## Architecture
 
----
+- **Master User (`cyrils`)**: Admin user with full system access.
+- **Agent User (`agents`)**: Restricted non-admin user dedicated to AI tools.
+- **Isolation Tunnel**: Precise ACLs allow the `agents` user to traverse into `~/Developer` while blocking all other private folders (`Documents`, `Desktop`, `.ssh`).
+- **Sandbox enforcement**: `sandbox-exec` profile at `~/.config/sandboxes/agent-profile.sb` locks the agent into a read-only system toolchain and its own home directory.
 
-## 🏗 0. Create the Agent User
-Before running any scripts, you need a dedicated standard user on your Mac.
+## 1. Setup
 
-### Option A: via macOS System Settings (GUI)
-1. Go to **System Settings** > **Users & Groups**.
-2. Click **Add User...** (you may need to enter your admin password).
-3. Set New Account type to **Standard**.
-4. Full Name: `AI Agent`.
-5. Account Name: `agents` (This is the name used in scripts).
-6. Password: Set a secure password (you'll need this for the `ai` bridge).
-
-### Option B: via Terminal (CLI)
-If you prefer the command line, run this from your **host** account:
+### Create the Agent User:
 ```bash
-sudo sysadminctl -addUser agents -fullName "AI Agent" -password "your_secure_password"
+sudo sysadminctl -addUser agents -password "SET_AGENT_PASSWORD" -fullName "AI Agent"
 ```
 
----
-
-## 🛠 1. The Setup Script (`setup.sh`)
-This script configures the permissions bridge between your host user and the agent.
-
+### Configure Isolation Tunnel:
 ```bash
-#!/bin/bash
+# 1. Allow agent to reach subfolders (traversal)
+chmod +a "user:agents allow search" /Users/cyrils
 
-# Configuration
-AGENT_USER="agents"
-HOST_USER=$(whoami)
-DEV_FOLDER="$HOME/Developer"
+# 2. Grant access to work directory
+sudo chmod -R +a "user:agents allow read,write,delete,add_file,add_subdirectory,file_inherit,directory_inherit" /Users/cyrils/Developer
 
-echo "🔐 Setting up Native Sandbox for $AGENT_USER..."
+# 3. Setup Agent Home and cross-access for master
+sudo chown -R agents:staff /Users/agents
+sudo chmod 770 /Users/agents
+sudo dseditgroup -o edit -a cyrils -t user staff
 
-# 1. Allow Agent to 'traverse' your home folder (but not read it)
-# "The Hallway Rule": Let the agent walk down your hallway to get to the office, 
-# without letting them peek into your bedroom (Documents).
-chmod 711 /Users/$HOST_USER
-
-# 2. Grant Agent full access to the Developer folder via ACLs
-echo "📂 Bridging $DEV_FOLDER..."
-chmod -R +a "user:$AGENT_USER allow read,write,delete,add_file,add_subdirectory,file_inherit,directory_inherit" "$DEV_FOLDER"
-
-# 3. Ensure the Agent owns its own home
-sudo chown -R $AGENT_USER:staff /Users/$AGENT_USER
-
-# 4. Grant Host User access to see Agent's folder in Finder
-sudo chmod +a "user:$HOST_USER allow list,search,read,execute,file_inherit,directory_inherit" /Users/$AGENT_USER
-
-echo "✅ Setup complete. Add the 'ai' function to your .zshrc next."
+# 4. Finalize ACL for cyrils
+sudo chmod +a "user:cyrils allow read,write,delete,add_file,add_subdirectory,file_inherit,directory_inherit" /Users/agents
 ```
 
----
-
-## 🏠 2. Host Configuration (Add to `~/.zshrc`)
-This function is your bridge. It allows you to run any command as the agent while staying in your current terminal session.
-
-```zsh
-# --- AI Agent Sandbox Bridge ---
-# Usage: ai <command> (e.g., ai gemini "explain this code")
+### Install the `ai` bridge function:
+Add this to your `~/.zshrc`:
+```bash
 ai() {
-    # -i: Login shell (loads agent's .zshrc)
-    # -u: Runs as the agent user
-    sudo -i -u agents "$@"
+    if [ $# -eq 0 ]; then
+        echo "Usage: ai <command> [args]"
+        return 1
+    fi
+
+    local profile="$HOME/.config/sandboxes/agent-profile.sb"
+    local project_dir=$(pwd)
+
+    # -u agents: Switch to isolated user
+    # -H: Force sudo to set HOME=/Users/agents correctly
+    sudo -u agents -H \
+        /usr/bin/sandbox-exec -f "$profile" \
+        -D PROJECT_DIR="$project_dir" \
+        /usr/bin/env HOME=/Users/agents PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" "$@"
 }
 ```
 
----
+## 2. Sandbox Profile (`agent-profile.sb`)
 
-## 🤖 3. Agent Configuration (`/Users/agents/.zshrc`)
-A minimalist profile for the agent. It doesn't need plugins or themes—just paths to the host's tools.
+The sandbox at `~/.config/sandboxes/agent-profile.sb` enforces the following:
+- **Stability**: Uses `(allow default)` + `(deny /Users/cyrils)` for M4 Silicon stability.
+- **The Wall**: Absolute block on master user files (`Documents`, `Desktop`, `.ssh`).
+- **The Bridge**: The ONLY allowed bridge to work folders (`Developer`).
+- **Network**: Cloud connectivity for LLM APIs.
+- **Docker**: Bridged access to Colima socket at `~/.colima/default/docker.sock`.
+- **Homebrew**: Read-only toolchain access (prevents unauthorized package installs).
 
-```zsh
-# Minimalist Agent Shell
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+## 3. Security Rules (AGENTS.md)
 
-# Auto-completion
-autoload -Uz compinit && compinit
-
-# Identity (prevents git commit errors)
-git config --global user.name "AI-Agent"
-git config --global user.email "agent@local.sandbox"
-
-# Workspace
-# Try to find the host's Developer folder
-HOST_DEV=$(ls -d /Users/*/Developer 2>/dev/null | grep -v "shared\|agents\|Guest" | head -n 1)
-if [ -d "$HOST_DEV" ]; then
-    cd "$HOST_DEV"
-else
-    cd ~
-fi
-
-# API Keys (Placeholders)
-# export GEMINI_API_KEY="your-key-here"
-```
-
----
-
-## 📜 4. Project Context (`AGENTS.md`)
-Place this in your project root so the agent understands its boundaries.
-
-```markdown
-# Environment Context
-- You are a sandboxed agent user on macOS.
-- You have access ONLY to this Developer folder.
-- Do not attempt to access /Users/ (except for this project).
-- Use host-provided binaries in /opt/homebrew/bin.
-- Be decisive; implement logical improvements without asking for permission.
-```
-
----
-
-## 📖 How to use
-1.  **Create a standard user** named `agents` in macOS System Settings.
-2.  **Run `setup.sh`** to build the permission bridge.
-3.  **Use `ai gemini` or `ai opencode`** to start working.
-
----
-
-## ⚡️ Storage Anorexia
-This setup uses **0 MB** of extra disk space for the environment. No 4GB Docker images, no heavy VMs. It’s just macOS doing what it was built to do: manage users.
-
-## 🛡 Safety: Why This Matters (The "Clawdbot" Risk)
-As open-source AI agents (like `Clawdbot`, `OpenCode`, and `Aider`) become more autonomous, they increasingly require the ability to run shell commands, install dependencies, and modify your system. 
-
-**Without a sandbox, you are one `npm install` away from a supply-chain attack on your personal data.**
-
-### The Risks:
-* **Exfiltration:** An untrusted script could scan your `~/Documents` or `~/.ssh` and upload your private keys to a remote server.
-* **Keychain Access:** If an agent has your user's permissions, it can potentially access your macOS Keychain and saved passwords.
-* **Persistent Malware:** An agent could modify your `.zshrc` or install a background service that persists even after the task is finished.
-
-### How the Sandbox Protects You:
-By using a dedicated `agents` user, you create a **hard boundary**. Even if an agent turns malicious or is compromised via a poisoned open-source package:
-1. It **cannot see** your personal files (Photos, Documents, Desktop).
-2. It **cannot access** your primary user's Keychain.
-3. It **cannot modify** your host system configuration.
-
---- 
-
-## 🤝 Troubleshooting
-*   **Permission Denied on Developer folder:** Re-run the `chmod -R +a` command in `setup.sh`.
-*   **Git errors:** Ensure the agent's `.zshrc` has the `git config` lines.
-*   **Path issues:** Verify `/opt/homebrew/bin` is in the agent's PATH if you use Apple Silicon.
+All agents operating in this environment are bound by these rules:
+- **Isolation**: ALWAYS operate within `/Users/agents` or the provided `PROJECT_DIR`.
+- **No Escalation**: NEVER attempt to use `sudo` or `chmod` on system files.
+- **Read-Only Tools**: NEVER attempt to `brew install` or modify the Homebrew toolchain.
+- **Privacy**: No access to the master user's private data is permitted or possible.

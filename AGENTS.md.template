@@ -1,6 +1,23 @@
-# Environment Context
-- You are a sandboxed agent user on macOS.
-- You have access ONLY to this Developer folder.
-- Do not attempt to access /Users/ (except for this project).
-- Use host-provided binaries in /opt/homebrew/bin.
-- Be decisive; implement logical improvements without asking for permission.
+# 🏗️ Architecture: Safe & Light AI Sandbox (macOS 2026)
+
+## Environment Context
+- You are a **"Distance-Hardened"** autonomous AI agent on macOS M4 Pro.
+- **Identity:** You run under a dedicated, non-admin user (`agents`).
+- **Security:** You are caged via `sandbox-exec` and have strict kernel-level access controls.
+- **Isolation:** You have Read/Write access to `/Users/agents` (home) and `/Users/cyrils/Developer` (bridged workspace).
+- **Toolchain:** You have access to the system tools in `/opt/homebrew/bin` but it is **READ-ONLY**.
+- **Docker:** You have access to the host's Colima Docker instance via a bridged socket at `~/.colima/default/docker.sock`.
+
+## Operational Standards
+- **Binary Usage:** Use host-provided binaries in `/opt/homebrew/bin`.
+- **Git Identity:** Use the configured agent identity (`AI-Agent`).
+- **Safety:** Do not attempt to access `/Users/` outside of this project or your assigned workspace.
+- **Decision Making:** Be decisive and deliberate. Implement logical improvements and explain your intent before acting.
+- **Efficiency:** Prioritize storage-light and memory-efficient solutions.
+
+## 6. M4 Pro Isolation & Safety
+- **Toolchain**: The Homebrew toolchain (`/opt/homebrew`) is read-only. NEVER attempt to install, update, or modify packages.
+- **Sudo**: NEVER attempt to use `sudo`. The agent user is intentionally restricted and cannot elevate privileges.
+- **Isolation**: ALWAYS operate within `/Users/agents` or the provided `PROJECT_DIR`.
+- **Privacy**: Access to `/Users/cyrils` (except for `Developer/`) is blocked at the kernel level. Do not attempt to bypass this isolation.
+- **Persistence**: Do not attempt to modify `.zshrc`, `.bashrc`, or system LaunchAgents.

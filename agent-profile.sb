@@ -1,0 +1,39 @@
+(version 1)
+(allow default)
+
+;; --- 1. THE WALL: PROTECT MASTER HOME ---
+(deny file-read* file-write* (subpath "/Users/cyrils"))
+
+;; --- 2. THE BRIDGE: COLIMA & DEVELOPER ---
+;; Allow the agent to talk to your Docker instance (Bridged via ACLs)
+(allow file-read* file-write* (literal "/Users/cyrils/.colima/default/docker.sock"))
+
+;; Allow metadata traversal of master home
+(allow file-read-metadata (literal "/Users/cyrils"))
+
+;; Allow full access to work folders (Bridged via ACLs)
+(allow file-read* file-write* (subpath "/Users/cyrils/Developer"))
+(allow file-read* file-write* (subpath (param "PROJECT_DIR")))
+
+;; --- 3. THE TOOLCHAIN: READ-ONLY HOMEBREW ---
+;; Agent can see and run tools, but CANNOT write/install new ones
+(allow file-read* (subpath "/opt/homebrew"))
+(deny file-write* (subpath "/opt/homebrew"))
+
+;; --- 4. AGENT HOME: FULL CONTROL ---
+(allow file-read* file-write* (subpath "/Users/agents"))
+
+;; --- 5. SYSTEM LIBRARIES & DEVICES ---
+(allow file-read* (subpath "/usr"))
+(allow file-read* (subpath "/System"))
+(allow file-read* (subpath "/Library"))
+(allow file-read* (subpath "/etc"))
+(allow file-read* (subpath "/dev"))
+(allow file-write* (subpath "/dev"))
+
+;; --- 6. SECURITY: PREVENT ESCALATION ---
+(deny process-exec* (literal "/usr/bin/sudo"))
+(deny file-read* (subpath "/Users/cyrils/.ssh"))
+(deny file-read* (subpath "/Users/cyrils/.aws"))
+(deny file-read* (subpath "/Users/cyrils/.gnupg"))
+(deny file-read* (subpath "/Users/cyrils/.kube"))
