@@ -2,17 +2,18 @@
 (allow default)
 
 ;; --- 1. THE WALL: PROTECT MASTER HOME ---
-(deny file-read* file-write* (subpath "/Users/cyrils"))
+;; Block everything in the admin's home directory
+(deny file-read* file-write* (subpath (string-append "/Users/" (param "ADMIN_USER"))))
 
 ;; --- 2. THE BRIDGE: COLIMA & DEVELOPER ---
-;; Allow the agent to talk to your Docker instance (Bridged via ACLs)
-(allow file-read* file-write* (literal "/Users/cyrils/.colima/default/docker.sock"))
+;; Allow the agent to talk to the Docker instance (Bridged via ACLs)
+(allow file-read* file-write* (literal (string-append "/Users/" (param "ADMIN_USER") "/.colima/default/docker.sock")))
 
 ;; Allow metadata traversal of master home
-(allow file-read-metadata (literal "/Users/cyrils"))
+(allow file-read-metadata (literal (string-append "/Users/" (param "ADMIN_USER"))))
 
 ;; Allow full access to work folders (Bridged via ACLs)
-(allow file-read* file-write* (subpath "/Users/cyrils/Developer"))
+(allow file-read* file-write* (subpath (string-append "/Users/" (param "ADMIN_USER") "/Developer")))
 (allow file-read* file-write* (subpath (param "PROJECT_DIR")))
 
 ;; --- 3. THE TOOLCHAIN: READ-ONLY HOMEBREW ---
@@ -33,7 +34,7 @@
 
 ;; --- 6. SECURITY: PREVENT ESCALATION ---
 (deny process-exec* (literal "/usr/bin/sudo"))
-(deny file-read* (subpath "/Users/cyrils/.ssh"))
-(deny file-read* (subpath "/Users/cyrils/.aws"))
-(deny file-read* (subpath "/Users/cyrils/.gnupg"))
-(deny file-read* (subpath "/Users/cyrils/.kube"))
+(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.ssh")))
+(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.aws")))
+(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.gnupg")))
+(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.kube")))

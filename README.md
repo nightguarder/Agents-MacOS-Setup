@@ -4,7 +4,7 @@ A secure architecture for running AI agents (Gemini, OpenCode, OpenClaw) on macO
 
 ## Architecture
 
-- **Master User (`cyrils`)**: Admin user with full system access.
+- **Master User (`<admin>`)**: Your primary admin user with full system access.
 - **Agent User (`agents`)**: Restricted non-admin user dedicated to AI tools.
 - **Isolation Tunnel**: Precise ACLs allow the `agents` user to traverse into `~/Developer` while blocking all other private folders (`Documents`, `Desktop`, `.ssh`).
 - **Sandbox enforcement**: `sandbox-exec` profile at `~/.config/sandboxes/agent-profile.sb` locks the agent into a read-only system toolchain and its own home directory.
@@ -17,24 +17,27 @@ sudo sysadminctl -addUser agents -password "SET_AGENT_PASSWORD" -fullName "AI Ag
 ```
 
 ### Configure Isolation Tunnel:
+Replace `<admin>` with your actual macOS username (e.g., `cyrils`).
+
 ```bash
 # 1. Allow agent to reach subfolders (traversal)
-chmod +a "user:agents allow search" /Users/cyrils
+chmod +a "user:agents allow search" /Users/<admin>
 
 # 2. Grant access to work directory
-sudo chmod -R +a "user:agents allow read,write,delete,add_file,add_subdirectory,file_inherit,directory_inherit" /Users/cyrils/Developer
+sudo chmod -R +a "user:agents allow read,write,delete,add_file,add_subdirectory,file_inherit,directory_inherit" /Users/<admin>/Developer
 
 # 3. Setup Agent Home and cross-access for master
 sudo chown -R agents:staff /Users/agents
 sudo chmod 770 /Users/agents
-sudo dseditgroup -o edit -a cyrils -t user staff
+sudo dseditgroup -o edit -a <admin> -t user staff
 
-# 4. Finalize ACL for cyrils
-sudo chmod +a "user:cyrils allow read,write,delete,add_file,add_subdirectory,file_inherit,directory_inherit" /Users/agents
+# 4. Finalize ACL for master user access to agents folder
+sudo chmod +a "user:<admin> allow read,write,delete,add_file,add_subdirectory,file_inherit,directory_inherit" /Users/agents
 ```
 
 ### Install the `ai` bridge function:
-Add this to your `~/.zshrc`:
+Add this to your `~/.zshrc`. Replace `<admin>` with your username.
+
 ```bash
 ai() {
     if [ $# -eq 0 ]; then
@@ -50,6 +53,7 @@ ai() {
     sudo -u agents -H \
         /usr/bin/sandbox-exec -f "$profile" \
         -D PROJECT_DIR="$project_dir" \
+        -D ADMIN_USER="<admin>" \
         /usr/bin/env HOME=/Users/agents PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin" "$@"
 }
 ```
@@ -57,7 +61,7 @@ ai() {
 ## 2. Sandbox Profile (`agent-profile.sb`)
 
 The sandbox at `~/.config/sandboxes/agent-profile.sb` enforces the following:
-- **Stability**: Uses `(allow default)` + `(deny /Users/cyrils)` for M4 Silicon stability.
+- **Stability**: Uses `(allow default)` + `(deny /Users/<admin>)` for M4 Silicon stability.
 - **The Wall**: Absolute block on master user files (`Documents`, `Desktop`, `.ssh`).
 - **The Bridge**: The ONLY allowed bridge to work folders (`Developer`).
 - **Network**: Cloud connectivity for LLM APIs.
