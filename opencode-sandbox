@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
+PROFILE="$SCRIPT_DIR/agent-profile.sb"
+
+OPENCODE_BIN="$(command -v opencode || true)"
+
+if [[ -z "$OPENCODE_BIN" ]]; then
+  OPENCODE_BIN="/opt/homebrew/bin/opencode"
+fi
+
+if [[ ! -x "$OPENCODE_BIN" ]]; then
+  echo "Error: opencode not found in PATH" >&2
+  echo "Expected at: $OPENCODE_BIN" >&2
+  exit 1
+fi
+
+exec /usr/bin/env -i \
+  HOME="${HOME:-}" \
+  PATH="${PATH:-}" \
+  EDITOR="${EDITOR:-}" \
+  VISUAL="${VISUAL:-}" \
+  TERM="${TERM:-}" \
+  TMPDIR="${TMPDIR:-}" \
+  COLORTERM="${COLORTERM:-}" \
+  LANG="${LANG:-}" \
+  LC_ALL="${LC_ALL:-}" \
+  OPENCODE_DISABLE_AUTOCOMPACT=true \
+  OPENCODE_DISABLE_PRUNE=true \
+  OPENCODE_DISABLE_LSP_DOWNLOAD=true \
+  OPENCODE_DISABLE_DEFAULT_PLUGINS=true \
+  OPENCODE_DISABLE_MODELS_FETCH=true \
+  OPENCODE_DISABLE_SHARE=true \
+  OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=true \
+  OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=true \
+  OPENCODE_DISABLE_EXTERNAL_SKILLS=true \
+  OPENCODE_EXPERIMENTAL_DISABLE_FILEWATCHER=true \
+  OPENCODE_DISABLE_TERMINAL_TITLE=true \
+  OPENCODE_DISABLE_FILETIME_CHECK=true \
+  /usr/bin/sandbox-exec -f "$PROFILE" "$OPENCODE_BIN" "$@"

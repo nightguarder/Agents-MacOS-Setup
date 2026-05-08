@@ -1,0 +1,40 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "share": "disabled",
+  "autoupdate": false,
+  "server": { "mdns": false },
+
+  "lsp": false,
+  "formatter": false,
+  "snapshot": false,
+  "disabled_providers": ["opencode"],
+
+  "permission": {
+    "*": "ask",
+    "external_directory": {
+      "*": "ask",
+      "$HOME/Developer/*": "allow",
+      "/tmp/*": "allow"
+    }
+  },
+
+  "agent": {
+     "build": {
+       "mode": "primary",
+       "tools": {
+         "*": false,
+         "apply_patch": true,
+         "batch": true,
+         "glob": true,
+         "grep": true,
+         "invalid": true,
+         "ls": true,
+         "read": true,
+         "task": true,
+         "webfetch": true,
+         "external_directory": true,
+         "bash": true
+       }
+     }
+   }
+}

@@ -1,23 +1,62 @@
-# 🏗️ Architecture: Safe & Light AI Sandbox (macOS 2026)
+# Global Agent Instructions
 
-## Environment Context
-- You are a **"Distance-Hardened"** autonomous AI agent on macOS M4 Pro.
-- **Identity:** You run under a dedicated, non-admin user (`agents`).
-- **Security:** You are caged via `sandbox-exec` and have strict kernel-level access controls.
-- **Isolation:** You have Read/Write access to `/Users/agents` (home) and `/Users/cyrils/Developer` (bridged workspace).
-- **Toolchain:** You have access to the system tools in `/opt/homebrew/bin` but it is **READ-ONLY**.
-- **Docker:** You have access to the host's Colima Docker instance via a bridged socket at `~/.colima/default/docker.sock`.
+These instructions apply to all projects and sessions.
 
-## Operational Standards
-- **Binary Usage:** Use host-provided binaries in `/opt/homebrew/bin`.
-- **Git Identity:** Use the configured agent identity (`AI-Agent`).
-- **Safety:** Do not attempt to access `/Users/` outside of this project or your assigned workspace.
-- **Decision Making:** Be decisive and deliberate. Implement logical improvements and explain your intent before acting.
-- **Efficiency:** Prioritize storage-light and memory-efficient solutions.
+## 1. Shell & Command Execution Security
 
-## 6. M4 Pro Isolation & Safety
-- **Toolchain**: The Homebrew toolchain (`/opt/homebrew`) is read-only. NEVER attempt to install, update, or modify packages.
-- **Sudo**: NEVER attempt to use `sudo`. The agent user is intentionally restricted and cannot elevate privileges.
-- **Isolation**: ALWAYS operate within `/Users/agents` or the provided `PROJECT_DIR`.
-- **Privacy**: Access to `/Users/cyrils` (except for `Developer/`) is blocked at the kernel level. Do not attempt to bypass this isolation.
-- **Persistence**: Do not attempt to modify `.zshrc`, `.bashrc`, or system LaunchAgents.
+- **Consent First:** NEVER execute any command without explicit user consent and a clear explanation of what the command does.
+- **Dry Runs:** For complex shell scripts or multi-command pipelines, offer a dry run or show the exact script content before execution.
+- **Dangerous Commands:** NEVER execute any command prefixed with `sudo`. This includes `sudo rm -rf`, `sudo brew install`, or any privilege escalation. NEVER run `csrutil disable`, `chsh`, `crontab`, or any command that modifies system-wide configurations. These commands are absolutely banned without exception.
+- **Environment Variables:** NEVER modify `PATH`, `SHELL`, `LD_LIBRARY_PATH`, or other security-sensitive environment variables without justification.
+- **Homebrew**: NEVER attempt to `brew install`, `brew upgrade`, or `brew tap`. The toolchain is read-only for security.
+- **Sudo**: NEVER attempt to use `sudo`. The agent user is intentionally restricted.
+- **Isolation**: ALWAYS operate within `/Users/agents` or the provided `PROJECT_DIR` in `/Users/cyrils/Developer`.
+- **Persistence**: Do not attempt to modify `.zshrc`, `.bashrc`, or system-wide configurations.
+
+## 2. File System Sandboxing
+
+The agent runs inside a macOS sandbox via `sandbox-exec`. The sandbox profile enforces:
+- **Deny all home directory reads/writes by default**
+- **Deny all process-exec by default**
+- **Only allow access to `/Users/cyrils/Developer/` (projects) and `/Users/agents/` (agent workspace)**
+
+- **ALLOWED directories:**
+  - `/Users/cyrils/Developer/**` (projects only - full read/write)
+  - `/Users/agents/**` (agent workspace - full read/write)
+  - `/private/tmp`, `/private/var/folders` (temp files)
+  - `/opt/homebrew/**` (read-only for toolchain)
+- **BLOCKED (denied by default):**
+  - `/Users/cyrils/Documents/**`
+  - `/Users/cyrils/Movies/**`
+  - `/Users/cyrils/Music/**`
+  - `/Users/cyrils/Pictures/**`
+  - `/Users/cyrils/Desktop/**`
+  - `/Users/cyrils/Downloads/**`
+  - `/Users/cyrils/.Trash/**`
+  - `/Users/cyrils/.ssh/**`
+  - `/Users/cyrils/.gnupg/**`
+  - `/Users/cyrils/.aws/**`
+  - `/Users/cyrils/.kube/**`
+  - `/Users/cyrils/.config/opencode/**` (except state dirs)
+  - Any other `/Users/cyrils/*` directory
+
+## 3. Network & Data Privacy
+
+- **Exfiltration Safety:** NEVER `curl` or `wget` data to external endpoints if it contains potential secrets, API keys, or private code snippets.
+- **Remote Access:** Prohibit starting reverse shells, backdoors, or unauthorized listeners (e.g., `nc -l`, `socat`).
+- **Discovery Tools:** Avoid using `nmap`, `netstat`, or `lsof` to scan the local network unless debugging a specific connection issue in the project.
+
+## 4. System Integrity & Process Control
+
+- **Process Management:** Do not `kill` processes unless they were started by the agent in the current session and are hanging. NEVER kill system processes or user-owned graphical applications.
+- **Power Management:** NEVER execute `shutdown`, `reboot`, or `sleep` commands. These are strictly banned.
+- **Persistence:** Do not attempt to create system-wide services (LaunchAgents, Systemd units) or modify shell RC files (`.zshrc`, `.bashrc`) without explicit permission.
+
+## 5. Git & Package Safety
+
+- **Git Integrity:**
+  - NEVER execute `git commit` automatically. Always ask the user before committing.
+  - NEVER execute `git rm` or other destructive git commands without explicit user consent.
+  - Always verify the state of the repo with `git status` before suggesting changes.
+- **Package Managers:** NEVER run `brew install`, `npm install -g`, or `pip install` (system-wide) without explicit user permission. Always ask first, and check for existing versions before suggesting an install.
+- **Script Execution:** NEVER pipe curls to bash (e.g., `curl ... | bash`) for installing software. Download the script first so the user can inspect it.

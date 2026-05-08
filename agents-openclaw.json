@@ -1,0 +1,15 @@
+{
+  "agents": {
+    "defaults": {
+      "workspace": "/Users/agents/.openclaw/workspace"
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "port": 18789
+  },
+  "meta": {
+    "lastTouchedVersion": "2026.4.11",
+    "lastTouchedAt": "2026-04-23T15:52:00.000Z"
+  }
+}
