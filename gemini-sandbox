@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$(realpath "$0")")" && pwd)"
+PROFILE="$SCRIPT_DIR/agent-profile.sb"
+
+GEMINI_BIN="/opt/homebrew/bin/gemini"
+NODE_BIN="/opt/homebrew/bin/node"
+
+if [[ ! -x "$GEMINI_BIN" ]]; then
+  echo "Error: gemini not found" >&2
+  exit 1
+fi
+
+exec /usr/bin/env -i \
+  HOME="${HOME:-}" \
+  PATH="/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin" \
+  EDITOR="${EDITOR:-}" \
+  VISUAL="${VISUAL:-}" \
+  TERM="${TERM:-}" \
+  TMPDIR="${TMPDIR:-}" \
+  COLORTERM="${COLORTERM:-}" \
+  LANG="${LANG:-}" \
+  LC_ALL="${LC_ALL:-}" \
+  USER="${USER:-}" \
+  SHELL="${SHELL:-}" \
+  GEMINI_DISABLE_TELEMETRY=true \
+  GEMINI_DISABLE_ANALYTICS=true \
+  /usr/bin/sandbox-exec -f "$PROFILE" "$NODE_BIN" "$GEMINI_BIN" "$@"

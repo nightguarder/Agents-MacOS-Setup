@@ -1,40 +1,60 @@
 (version 1)
+
+;; DEFAULT ALLOW, THEN DENY
 (allow default)
 
-;; --- 1. THE WALL: PROTECT MASTER HOME ---
-;; Block everything in the admin's home directory
-(deny file-read* file-write* (subpath (string-append "/Users/" (param "ADMIN_USER"))))
+;; --- 1. DENY HOME DIRECTORY (global block) ---
+;; Block ALL read/write to admin's home by default
+(deny file-write*)
+(deny file-read* (subpath "/Users/cyrils"))
 
-;; --- 2. THE BRIDGE: COLIMA & DEVELOPER ---
-;; Allow the agent to talk to the Docker instance (Bridged via ACLs)
-(allow file-read* file-write* (literal (string-append "/Users/" (param "ADMIN_USER") "/.colima/default/docker.sock")))
+;; --- 2. DENY PROCESS EXEC (global block) ---
+(deny process-exec)
 
-;; Allow metadata traversal of master home
-(allow file-read-metadata (literal (string-append "/Users/" (param "ADMIN_USER"))))
+;; --- 3. ALLOW SYSTEM BINARIES ---
+(allow process-exec (subpath "/bin"))
+(allow process-exec (subpath "/usr/bin"))
+(allow process-exec (subpath "/sbin"))
+(allow process-exec (subpath "/usr/sbin"))
 
-;; Allow full access to work folders (Bridged via ACLs)
-(allow file-read* file-write* (subpath (string-append "/Users/" (param "ADMIN_USER") "/Developer")))
-(allow file-read* file-write* (subpath (param "PROJECT_DIR")))
+;; --- 4. ALLOW TOOLCHAIN ---
+(allow process-exec (subpath "/opt/homebrew"))
 
-;; --- 3. THE TOOLCHAIN: READ-ONLY HOMEBREW ---
-;; Agent can see and run tools, but CANNOT write/install new ones
-(allow file-read* (subpath "/opt/homebrew"))
-(deny file-write* (subpath "/opt/homebrew"))
+;; --- 5. BLOCK HIGH-RISK LAUNCHERS ---
+(deny process-exec (literal "/bin/launchctl"))
+(deny process-exec (literal "/usr/bin/open"))
+(deny process-exec (literal "/usr/bin/osascript"))
+(deny process-exec (literal "/usr/bin/sudo"))
 
-;; --- 4. AGENT HOME: FULL CONTROL ---
-(allow file-read* file-write* (subpath "/Users/agents"))
+;; --- 6. WORKSPACE: PROJECT DIRECTORY ONLY ---
+;; Only allow read/write to Developer folder (your project work)
+(allow file-read* (subpath "/Users/cyrils/Developer"))
+(allow file-write* (subpath "/Users/cyrils/Developer"))
+(allow file-read* (subpath (param "PROJECT_DIR")))
+(allow file-write* (subpath (param "PROJECT_DIR")))
 
-;; --- 5. SYSTEM LIBRARIES & DEVICES ---
-(allow file-read* (subpath "/usr"))
-(allow file-read* (subpath "/System"))
-(allow file-read* (subpath "/Library"))
-(allow file-read* (subpath "/etc"))
-(allow file-read* (subpath "/dev"))
-(allow file-write* (subpath "/dev"))
+;; --- 7. AGENT HOME (full control) ---
+(allow file-read* (subpath "/Users/agents"))
+(allow file-write* (subpath "/Users/agents"))
 
-;; --- 6. SECURITY: PREVENT ESCALATION ---
-(deny process-exec* (literal "/usr/bin/sudo"))
-(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.ssh")))
-(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.aws")))
-(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.gnupg")))
-(deny file-read* (subpath (string-append "/Users/" (param "ADMIN_USER") "/.kube")))
+;; --- 8. TEMP DIRS ---
+(allow file-read* file-write* (subpath "/private/tmp"))
+(allow file-read* file-write* (subpath "/private/var/folders"))
+
+;; --- 9. OPENCODE STATE ---
+(allow file-read* (subpath "/Users/cyrils/.config/opencode"))
+(allow file-write* (subpath "/Users/cyrils/.config/opencode"))
+(allow file-read* (subpath "/Users/cyrils/.local/share/opencode"))
+(allow file-write* (subpath "/Users/cyrils/.local/share/opencode"))
+(allow file-read* (subpath "/Users/cyrils/.cache/opencode"))
+(allow file-write* (subpath "/Users/cyrils/.cache/opencode"))
+
+;; --- 10. METADATA (for path traversal) ---
+(allow file-read-metadata (literal "/"))
+(allow file-read-metadata (subpath "/Users"))
+(allow file-read-metadata (subpath "/Users/cyrils"))
+(allow file-read-metadata (subpath "/Users/cyrils/Developer"))
+
+;; --- 11. NETWORK ---
+(allow network-outbound)
+(allow network-bind)
